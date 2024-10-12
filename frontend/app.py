@@ -4,12 +4,12 @@ from modules.visualization import display_results
 from modules.utils import load_config
 
 # Set the page configuration
-st.set_page_config(page_title="NuPlan Simulation Interface", page_icon="🚗", layout="wide")
+st.set_page_config(page_title="Trajectory Prediction Interface Design", page_icon="🚗", layout="wide")
 
 # Display the application logo
 st.image('assets/images/logo.png', width=200)
 
-st.title("NuPlan Simulation Interface")
+st.title("Trajectory Prediction Interface Design")
 
 # Load default configuration
 config = load_config('config/default_config.yaml')
