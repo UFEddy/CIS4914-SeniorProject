@@ -1,0 +1,8 @@
+scenarios:
+  - "city_driving"
+  - "highway_cruise"
+  - "parking_maneuver"
+vehicle_models:
+  - "Sedan"
+  - "SUV"
+  - "Truck"
