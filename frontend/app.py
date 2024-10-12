@@ -20,6 +20,26 @@ scenario = st.sidebar.selectbox("Select Scenario", options=config['scenarios'])
 vehicle_model = st.sidebar.selectbox("Select Vehicle Model", options=config['vehicle_models'])
 config_file = st.sidebar.file_uploader("Upload Custom Configuration", type=['yaml', 'json'])
 
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Home", "Metrics", "Settings", "Logs"]
+)
+
+with tab1:
+    st.title("Home")
+    st.write("This is the Home tab content.")
+
+with tab2:
+    st.title("Metrics")
+    st.write("This is the Metrics tab content.")
+
+with tab3:
+    st.title("Settings")
+    st.write("This is the Settings tab content.")
+
+with tab4:
+    st.title("Logs")
+    st.write("This is the Logs tab content.")
+
 # Run simulation button
 if st.sidebar.button("Run Simulation"):
     with st.spinner("Running simulation..."):
