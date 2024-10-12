@@ -7,9 +7,10 @@ from modules.utils import load_config
 st.set_page_config(page_title="Trajectory Prediction Interface Design", page_icon="🚗", layout="wide")
 
 # Display the application logo
-st.image('assets/images/logo.png', width=200)
+st.image('assets/images/logo.png', use_column_width=True)
 
 st.title("Trajectory Prediction Interface Design")
+
 
 # Load default configuration
 config = load_config('config/default_config.yaml')
@@ -20,6 +21,7 @@ scenario = st.sidebar.selectbox("Select Scenario", options=config['scenarios'])
 vehicle_model = st.sidebar.selectbox("Select Vehicle Model", options=config['vehicle_models'])
 config_file = st.sidebar.file_uploader("Upload Custom Configuration", type=['yaml', 'json'])
 
+# horizontal tab ocnfiguration
 tab1, tab2, tab3, tab4 = st.tabs(
     ["Home", "Metrics", "Settings", "Logs"]
 )
