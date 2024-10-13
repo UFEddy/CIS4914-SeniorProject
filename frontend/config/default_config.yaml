@@ -1,8 +1,9 @@
 scenarios:
-  - "city_driving"
-  - "highway_cruise"
-  - "parking_maneuver"
-vehicle_models:
-  - "Sedan"
-  - "SUV"
-  - "Truck"
+  - "jaywalker"
+  - "dense traffic"
+  - "unprotected turn"
+simulation_map:
+  - "Vegas"
+  - "Boston"
+  - "Pittsburgh"
+  - "Singapore"

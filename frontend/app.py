@@ -18,7 +18,7 @@ config = load_config('config/default_config.yaml')
 # Sidebar inputs
 st.sidebar.header("Simulation Parameters")
 scenario = st.sidebar.selectbox("Select Scenario", options=config['scenarios'])
-vehicle_model = st.sidebar.selectbox("Select Vehicle Model", options=config['vehicle_models'])
+simulation_map = st.sidebar.selectbox("Select Simulation Map", options=config['simulation_map'])
 config_file = st.sidebar.file_uploader("Upload Custom Configuration", type=['yaml', 'json'])
 
 # horizontal tab ocnfiguration
@@ -55,7 +55,7 @@ if st.sidebar.button("Run Simulation"):
             simulation_config = 'config/default_config.yaml'
 
         # Run the simulation
-        success, output_path = run_simulation(scenario, vehicle_model, simulation_config)
+        success, output_path = run_simulation(scenario, simulation_map, simulation_config)
 
         if success:
             st.success("Simulation completed successfully.")

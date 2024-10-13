@@ -15,12 +15,12 @@ def run_simulation(scenario, vehicle_model, config_file):
     """
     output_dir = 'data/simulations'
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{scenario}_{vehicle_model}_output")
+    output_path = os.path.join(output_dir, f"{scenario}_{simulation_map}_output")
 
     command = [
         "nuplan_cli_command",
         "--scenario", scenario,
-        "--vehicle", vehicle_model,
+        "--simulation_maps", simulation_map,
         "--config", config_file,
         "--output", output_path
     ]
