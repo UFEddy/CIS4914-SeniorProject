@@ -3,8 +3,8 @@ import pandas as pd
 from nuplan.database.nuplan_db_orm.nuplandb_wrapper import NuPlanDBWrapper
 
 # paths and configuration variables
-NUPLAN_DATA_ROOT = "/Users/eddyrosales/Documents/Senior Project/NuPlan/nuplan-devkit/nuplan/dataset/"
-NUPLAN_MAPS_ROOT = "/Users/eddyrosales/Documents/Senior Project/NuPlan/nuplan-devkit/nuplan/dataset/maps"
+NUPLAN_DATA_ROOT = "PATH to DATASET ROOT"
+NUPLAN_MAPS_ROOT = "PATH TO DATASET MAP ROOT"
 NUPLAN_DB_FILES = f"{NUPLAN_DATA_ROOT}/nuplan-v1.1/splits/mini"
 NUPLAN_MAP_VERSION = "nuplan-maps-v1.0"
 
