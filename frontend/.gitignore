@@ -1,0 +1,47 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pkl
+*.pyo
+*.ipynb_checkpoints
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Data and model files
+*.csv
+*.json
+*.xlsx
+*.h5
+*.model
+*.joblib
+*.pkl
+
+# Streamlit-specific files
+.streamlit/
+.stcache/
+.stcache/*
+
+# Logs and outputs
+logs/
+*.log
+
+# Environment files
+.env
+.env.*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Miscellaneous
+*.swp
+*.swo
+*.bak
