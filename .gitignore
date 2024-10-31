@@ -17,4 +17,4 @@ config/*.yaml
 *.log
 
 #OS generated file
-../extractions/.DS_Store
+extractions/.DS_Store
