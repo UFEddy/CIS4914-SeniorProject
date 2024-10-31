@@ -15,3 +15,6 @@ config/*.yaml
 
 # Ignore uploaded files
 *.log
+
+#OS generated file
+../extractions/.DS_Store
