@@ -19,3 +19,7 @@ config/*.yaml
 #OS generated file
 extractions/.DS_Store
 .DS_Store
+
+# ignore extractions
+extractions/*
+extractions/
