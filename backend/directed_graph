@@ -1,0 +1,67 @@
+import networkx as nx
+import numpy as np
+import matplotlib.pyplot as plt
+from networkx.algorithms.bipartite.basic import color
+
+print("Test.")
+
+# Initializes directed graph
+directed_graph = nx.DiGraph()
+
+# Positional values of each node
+# -- Data from  lidar_pc:timestamp: 1620857889651124,
+#               ego_pos:timpestamp: 1620857888643194,
+#               lidar_bos:lidar_pc_token: e1e4ee25d1ff58f2
+# -- Ego global position x, y, z: 664656.4443954539, 3999268.724488085, 606.3969844340338
+# -- -- Currently omitting use of z values
+pos = nx.spring_layout(directed_graph)
+# Ego vehicle
+pos['Ego'] = np.array([664656.4443954539, 3999268.724488085])
+# Agents - Tokens are from lidar_box:track_token
+# -- Some instances seem to be repeats of the same object, so those are considered one agent and skipped over
+# 7af4e8cc4e86597a - Pedestrian
+pos['Agent1'] = np.array(([664682.04248548, 3999281.5750495587]))
+# ccb4b116bc455953 - Pedestrian
+pos['Agent2'] = np.array(([664689.4877757924, 3999264.3124307613]))
+# 8024956ac6ef531c - Vehicle
+pos['Agent3'] = np.array(([664675.2972492764, 3999292.7748535355]))
+# 695ec56d1c3f5f0c - Vehicle
+pos['Agent4'] = np.array(([664660.0810610142, 3999267.0798497046]))
+# 318b8e85638655c3 - Vehicle
+pos['Agent5'] = np.array(([664651.5698242149, 3999252.816483968]))
+# 4e3af51b897c5a8c - Vehicle
+pos['Agent6'] = np.array(([664671.4327247036, 3999300.8487119805]))
+
+# Edges and weight between nodes
+# Note the weight of an edge is dependent on the agent types and nothing else
+directed_graph.add_edge('Agent1', 'Ego', weight=1)
+directed_graph.add_edge('Agent2', 'Ego', weight=1)
+directed_graph.add_edge('Agent3', 'Ego', weight=5)
+directed_graph.add_edge('Agent4', 'Ego', weight=5)
+directed_graph.add_edge('Agent5', 'Ego', weight=5)
+directed_graph.add_edge('Agent6', 'Ego', weight=5)
+
+# Draws the directed graph
+plt.figure()
+color_map = ['pink' if node == 'Ego'
+            else 'blue' if node == 'Agent1'
+            else 'blue' if node == 'Agent2'
+            else 'red' for node in directed_graph]
+nx.draw(
+    directed_graph, pos, edge_color='black', width=1, linewidths=1,
+    node_size=500, node_color=color_map, alpha=0.9,
+    labels={node: node for node in directed_graph.nodes()}
+)
+# Edge labels
+nx.draw_networkx_edge_labels(
+    directed_graph, pos,
+    edge_labels={('Agent1', 'Ego'): 'Weight: 1',
+                 ('Agent2', 'Ego'): 'Weight: 1',
+                 ('Agent3', 'Ego'): 'Weight: 5',
+                 ('Agent4', 'Ego'): 'Weight: 5',
+                 ('Agent5', 'Ego'): 'Weight: 5',
+                 ('Agent6', 'Ego'): 'Weight: 5',}
+)
+plt.axis('off')
+plt.show()
+
