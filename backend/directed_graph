@@ -3,65 +3,101 @@ import numpy as np
 import matplotlib.pyplot as plt
 from networkx.algorithms.bipartite.basic import color
 
-print("Test.")
+
+# Node Superclass
+class Node:
+    def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
+                 x_acceleration, y_acceleration):
+        self.name = name
+        self.x_global_position = x_global_position
+        self.y_global_position = y_global_position
+        self.x_velocity = x_velocity
+        self.y_velocity = y_velocity
+        self.x_acceleration = x_acceleration
+        self.y_acceleration = y_acceleration
+
+
+# Ego Node Subclass
+class EgoNode(Node):
+    def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
+                 x_acceleration, y_acceleration, x_angular_rate, y_angular_rate):
+        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity,
+                 x_acceleration, y_acceleration)
+        self.x_angular_rate = x_angular_rate
+        self.y_angular_rate = y_angular_rate
+        self.node_type = 'Ego'
+
+
+# Agent Node Subclass
+class AgentNode(Node):
+    def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
+                 x_acceleration, y_acceleration, yaw, category):
+        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity,
+                 x_acceleration, y_acceleration)
+        self.yaw = yaw
+        self.category = category
+        self.node_type = 'Agent'
+
+
+# Dictionary for agent weights based on their category - Weights are static
+agentCategoryToWeightDictionary = {
+    'pedestrian' : 1,
+    'vehicle' : 5
+}
+
+# Dictionary for agent colors - For color_map only
+agentColorDictionary = {
+    'pedestrian' : 'blue',
+    'vehicle' : 'red'
+}
+
+# List to hold nodes for all following operations
+nodeList = []
+# Contains colors for each node
+color_map = []
+
+
+# TODO - These nodes will want to be from the dataset with all their appropriate values
+Ego = EgoNode('Ego', 10, 10, 0, 0, 0, 0, 0, 0)
+Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
+Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
+# TODO - Don't forget to append the above nodes to the node list
+nodeList.append(Ego)
+nodeList.append(Agent1)
+nodeList.append(Agent2)
+
 
 # Initializes directed graph
 directed_graph = nx.DiGraph()
-
-# Positional values of each node
-# -- Data from  lidar_pc:timestamp: 1620857889651124,
-#               ego_pos:timpestamp: 1620857888643194,
-#               lidar_bos:lidar_pc_token: e1e4ee25d1ff58f2
-# -- Ego global position x, y, z: 664656.4443954539, 3999268.724488085, 606.3969844340338
-# -- -- Currently omitting use of z values
+# Initializes position layout
 pos = nx.spring_layout(directed_graph)
-# Ego vehicle
-pos['Ego'] = np.array([664656.4443954539, 3999268.724488085])
-# Agents - Tokens are from lidar_box:track_token
-# -- Some instances seem to be repeats of the same object, so those are considered one agent and skipped over
-# 7af4e8cc4e86597a - Pedestrian
-pos['Agent1'] = np.array(([664682.04248548, 3999281.5750495587]))
-# ccb4b116bc455953 - Pedestrian
-pos['Agent2'] = np.array(([664689.4877757924, 3999264.3124307613]))
-# 8024956ac6ef531c - Vehicle
-pos['Agent3'] = np.array(([664675.2972492764, 3999292.7748535355]))
-# 695ec56d1c3f5f0c - Vehicle
-pos['Agent4'] = np.array(([664660.0810610142, 3999267.0798497046]))
-# 318b8e85638655c3 - Vehicle
-pos['Agent5'] = np.array(([664651.5698242149, 3999252.816483968]))
-# 4e3af51b897c5a8c - Vehicle
-pos['Agent6'] = np.array(([664671.4327247036, 3999300.8487119805]))
 
-# Edges and weight between nodes
-# Note the weight of an edge is dependent on the agent types and nothing else
-directed_graph.add_edge('Agent1', 'Ego', weight=1)
-directed_graph.add_edge('Agent2', 'Ego', weight=1)
-directed_graph.add_edge('Agent3', 'Ego', weight=5)
-directed_graph.add_edge('Agent4', 'Ego', weight=5)
-directed_graph.add_edge('Agent5', 'Ego', weight=5)
-directed_graph.add_edge('Agent6', 'Ego', weight=5)
+# Adds node positions and edges
+# TODO - Colors aren't being set to the correct nodes
+for node in nodeList:
+    pos[node.name] = np.array([node.x_global_position, node.y_global_position])
+    # Only adds edges for agent nodes, as all edges point to the ego node
+    if node.node_type == 'Agent':
+        directed_graph.add_edge(node.name, 'Ego', weight=agentCategoryToWeightDictionary[node.category])
+        color_map.append(agentColorDictionary[node.category])
+    else:
+        color_map.append('pink')
+
 
 # Draws the directed graph
 plt.figure()
-color_map = ['pink' if node == 'Ego'
-            else 'blue' if node == 'Agent1'
-            else 'blue' if node == 'Agent2'
-            else 'red' for node in directed_graph]
 nx.draw(
     directed_graph, pos, edge_color='black', width=1, linewidths=1,
     node_size=500, node_color=color_map, alpha=0.9,
     labels={node: node for node in directed_graph.nodes()}
 )
 # Edge labels
-nx.draw_networkx_edge_labels(
-    directed_graph, pos,
-    edge_labels={('Agent1', 'Ego'): 'Weight: 1',
-                 ('Agent2', 'Ego'): 'Weight: 1',
-                 ('Agent3', 'Ego'): 'Weight: 5',
-                 ('Agent4', 'Ego'): 'Weight: 5',
-                 ('Agent5', 'Ego'): 'Weight: 5',
-                 ('Agent6', 'Ego'): 'Weight: 5',}
-)
+for node in nodeList:
+    pos[node.name] = np.array([node.x_global_position, node.y_global_position])
+    if node.name != 'Ego':
+        nx.draw_networkx_edge_labels(
+            directed_graph, pos,
+            edge_labels={(node.name, 'Ego'): 'Weight: ' + str(agentCategoryToWeightDictionary[node.category])}
+        )
 plt.axis('off')
 plt.show()
-
