@@ -27,3 +27,24 @@ class AgentInteractionEncoder(nn.Module):
         # Apply GNN layer (simplified)
         node_embeddings = self.gnn(node_features)
         return node_embeddings  # Shape: (num_agents, out_features)
+
+class InfluenceEncoder(nn.Module):
+    def __init__(self, input_dim, hidden_dim):
+        super(InfluenceEncoder, self).__init__()
+        self.fc = nn.Linear(input_dim, hidden_dim)
+        self.relu = nn.ReLU()
+        self.fc_aggregate = nn.Linear(hidden_dim, hidden_dim)
+    
+    def forward(self, node_features, edge_index, edge_weights):
+        embeddings = self.fc(node_features)
+        embeddings = self.relu(embeddings)
+        
+        aggregated_embeddings = torch.zeros_like(embeddings)
+        
+        for i, (src, dest) in enumerate(edge_index.t()):
+            aggregated_embeddings[dest] += edge_weights[i] * embeddings[src]
+        
+        ego_index = node_names.index('Ego') 
+        influence_vector = self.fc_aggregate(self.relu(aggregated_embeddings[ego_index]))
+        
+        return influence_vector
