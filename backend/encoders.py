@@ -1,4 +1,3 @@
-# encoders.py
 import torch
 import torch.nn as nn
 
@@ -7,10 +6,19 @@ class EnvironmentEncoder(nn.Module):
     def __init__(self, input_size, hidden_size):
         super(EnvironmentEncoder, self).__init__()
         self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.hidden_size = hidden_size
 
     def forward(self, env_tensor):
-        _, (hn, _) = self.lstm(env_tensor)  # Only keep the last hidden state
-        return hn[-1]  # Shape: (batch_size, hidden_size)
+        # Initialize hidden state
+        batch_size = env_tensor.size(0)
+        h0 = torch.zeros(1, batch_size, self.hidden_size).to(env_tensor.device)
+        c0 = torch.zeros(1, batch_size, self.hidden_size).to(env_tensor.device)
+
+        # Process with LSTM
+        output, (hidden, _) = self.lstm(env_tensor, (h0, c0))
+
+        # Return last hidden state
+        return hidden[-1]
 
 
 class AgentInteractionEncoder(nn.Module):
@@ -18,12 +26,8 @@ class AgentInteractionEncoder(nn.Module):
         super(AgentInteractionEncoder, self).__init__()
         self.gnn = nn.Linear(in_features, out_features)
 
-    def forward(self, agent_graph):
-        # Convert agent graph to input tensor for GNN
-        node_features = torch.tensor([agent_graph.nodes[n]['position'] for n in agent_graph.nodes])
-        edge_indices = torch.tensor([[u, v] for u, v in agent_graph.edges])
-        edge_weights = torch.tensor([agent_graph[u][v]['weight'] for u, v in agent_graph.edges])
-
-        # Apply GNN layer (simplified)
-        node_embeddings = self.gnn(node_features)
-        return node_embeddings  # Shape: (num_agents, out_features)
+    def forward(self, agent_data):
+        # For testing - assume agent_data is just a tensor
+        # Shape: (batch_size, features)
+        node_embeddings = self.gnn(agent_data)
+        return node_embeddings
