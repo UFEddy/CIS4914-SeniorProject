@@ -67,6 +67,12 @@ def createDirectedGraph():
     #Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
     #Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
 
+    # Standardize category names to lowercase
+    agent_data['category'] = agent_data['category'].str.lower()
+    
+    # Exclude traffic cone and generic object categories from agent data
+    agent_data = agent_data[~agent_data['category'].isin(['traffic_cone', 'generic object'])]
+
     # Create Ego nodes
     for index, ego_row in ego_data.iterrows():
         Ego = EgoNode(
