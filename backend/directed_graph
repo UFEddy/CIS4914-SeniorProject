@@ -2,7 +2,7 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 from networkx.algorithms.bipartite.basic import color
-
+import pandas as pd
 
 # Node Superclass
 class Node:
@@ -55,16 +55,50 @@ nodeList = []
 color_map = []
 
 
+# Read the data files
+ego_data = pd.read_csv('ego_pose.csv')
+agent_data = pd.read_csv('agent_data.csv')
+
 # Creates and returns the directed graph
 def createDirectedGraph():
     # TODO - These nodes will want to be from the dataset with all their appropriate values
-    Ego = EgoNode('Ego', 10, 10, 0, 0, 0, 0, 0, 0)
-    Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
-    Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
+
+    #Ego = EgoNode('Ego', 10, 10, 0, 0, 0, 0, 0, 0)
+    #Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
+    #Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
+
+    # Create Ego nodes
+    for index, ego_row in ego_data.iterrows():
+        Ego = EgoNode(
+            name=f'Ego{index+1}',
+            x_global_position=ego_row['x'],
+            y_global_position=ego_row['y'],
+            x_velocity=ego_row['vx'],
+            y_velocity=ego_row['vy'],
+            x_acceleration=ego_row['acceleration_x'],
+            y_acceleration=ego_row['acceleration_y'],
+            x_angular_rate=ego_row['angular_rate_x'],
+            y_angular_rate=ego_row['angular_rate_y']
+        )
+        nodeList.append(Ego)
+
+    # Create Agent nodes
+    for index, row in agent_data.iterrows():
+        agent = AgentNode(
+            name=f'Agent{index+1}',
+            x_global_position=row['x'],
+            y_global_position=row['y'],
+            x_velocity=row['vx'],
+            y_velocity=row['vy'],
+            yaw=row['yaw'],
+            category=row['category']
+        )
+        nodeList.append(agent)
+
     # TODO - Don't forget to append the above nodes to the node list
-    nodeList.append(Ego)
-    nodeList.append(Agent1)
-    nodeList.append(Agent2)
+    #nodeList.append(Ego)
+    #nodeList.append(Agent1)
+    #nodeList.append(Agent2)
 
 
     # Initializes directed graph
