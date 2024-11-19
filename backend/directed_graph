@@ -57,47 +57,60 @@ nodeList = []
 color_map = []
 
 
-# TODO - These nodes will want to be from the dataset with all their appropriate values
-Ego = EgoNode('Ego', 10, 10, 0, 0, 0, 0, 0, 0)
-Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
-Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
-# TODO - Don't forget to append the above nodes to the node list
-nodeList.append(Ego)
-nodeList.append(Agent1)
-nodeList.append(Agent2)
+# Creates and returns the directed graph
+def createDirectedGraph():
+    # TODO - These nodes will want to be from the dataset with all their appropriate values
+    Ego = EgoNode('Ego', 10, 10, 0, 0, 0, 0, 0, 0)
+    Agent1 = AgentNode('Agent1', 2, 4, 0, 0, 0, 0, 0, 'pedestrian')
+    Agent2 = AgentNode('Agent2', 6, 4, 0, 0, 0, 0, 0, 'vehicle')
+    # TODO - Don't forget to append the above nodes to the node list
+    nodeList.append(Ego)
+    nodeList.append(Agent1)
+    nodeList.append(Agent2)
 
 
-# Initializes directed graph
-directed_graph = nx.DiGraph()
-# Initializes position layout
-pos = nx.spring_layout(directed_graph)
+    # Initializes directed graph
+    directed_graph = nx.DiGraph()
+    # Initializes position layout
+    pos = nx.spring_layout(directed_graph)
 
-# Adds node positions and edges
-# TODO - Colors aren't being set to the correct nodes
-for node in nodeList:
-    pos[node.name] = np.array([node.x_global_position, node.y_global_position])
-    # Only adds edges for agent nodes, as all edges point to the ego node
-    if node.node_type == 'Agent':
-        directed_graph.add_edge(node.name, 'Ego', weight=agentCategoryToWeightDictionary[node.category])
-        color_map.append(agentColorDictionary[node.category])
-    else:
-        color_map.append('pink')
+    # Adds node positions and edges
+    # TODO - Colors aren't being set to the correct nodes
+    for node in nodeList:
+        pos[node.name] = np.array([node.x_global_position, node.y_global_position])
+        # Only adds edges for agent nodes, as all edges point to the ego node
+        if node.node_type == 'Agent':
+            directed_graph.add_edge(node.name, 'Ego', weight=agentCategoryToWeightDictionary[node.category])
+            color_map.append(agentColorDictionary[node.category])
+        else:
+            color_map.append('pink')
 
 
-# Draws the directed graph
-plt.figure()
-nx.draw(
-    directed_graph, pos, edge_color='black', width=1, linewidths=1,
-    node_size=500, node_color=color_map, alpha=0.9,
-    labels={node: node for node in directed_graph.nodes()}
-)
-# Edge labels
-for node in nodeList:
-    pos[node.name] = np.array([node.x_global_position, node.y_global_position])
-    if node.name != 'Ego':
-        nx.draw_networkx_edge_labels(
-            directed_graph, pos,
-            edge_labels={(node.name, 'Ego'): 'Weight: ' + str(agentCategoryToWeightDictionary[node.category])}
-        )
-plt.axis('off')
-plt.show()
+    # Draws the directed graph
+    plt.figure()
+    nx.draw(
+        directed_graph, pos, edge_color='black', width=1, linewidths=1,
+        node_size=500, node_color=color_map, alpha=0.9,
+        labels={node: node for node in directed_graph.nodes()}
+    )
+    # Edge labels
+    for node in nodeList:
+        pos[node.name] = np.array([node.x_global_position, node.y_global_position])
+        if node.name != 'Ego':
+            nx.draw_networkx_edge_labels(
+                directed_graph, pos,
+                edge_labels={(node.name, 'Ego'): 'Weight: ' + str(agentCategoryToWeightDictionary[node.category])}
+            )
+    plt.axis('off')
+
+    return directed_graph
+
+
+# Returns the node list of the directed graph
+def directedGraphNodeList():
+    return nodeList
+
+
+# Shows the directed graph
+def showDirectedGraph():
+    plt.show()
