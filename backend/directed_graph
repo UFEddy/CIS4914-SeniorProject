@@ -6,23 +6,22 @@ from networkx.algorithms.bipartite.basic import color
 
 # Node Superclass
 class Node:
-    def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
-                 x_acceleration, y_acceleration):
+    def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity):
         self.name = name
         self.x_global_position = x_global_position
         self.y_global_position = y_global_position
         self.x_velocity = x_velocity
         self.y_velocity = y_velocity
-        self.x_acceleration = x_acceleration
-        self.y_acceleration = y_acceleration
+
 
 
 # Ego Node Subclass
 class EgoNode(Node):
     def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
                  x_acceleration, y_acceleration, x_angular_rate, y_angular_rate):
-        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity,
-                 x_acceleration, y_acceleration)
+        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity)
+        self.x_acceleration = x_acceleration
+        self.y_acceleration = y_acceleration
         self.x_angular_rate = x_angular_rate
         self.y_angular_rate = y_angular_rate
         self.node_type = 'Ego'
@@ -32,8 +31,7 @@ class EgoNode(Node):
 class AgentNode(Node):
     def __init__(self, name, x_global_position, y_global_position, x_velocity, y_velocity,
                  x_acceleration, y_acceleration, yaw, category):
-        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity,
-                 x_acceleration, y_acceleration)
+        super().__init__(name, x_global_position, y_global_position, x_velocity, y_velocity)
         self.yaw = yaw
         self.category = category
         self.node_type = 'Agent'
