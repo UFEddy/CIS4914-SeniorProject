@@ -1,5 +1,6 @@
 import pandas as pd
 import torch
+from directed_graph import createDirectedGraph, directedGraphNodeList, showDirectedGraph
 from model import TrajectoryPredictionModel
 from utils import encode_environment
 import numpy as np
@@ -7,9 +8,9 @@ import numpy as np
 
 def main():
     # Parameters
-    sequence_length = 10
+    sequence_length = 1
     env_input_size = 2  # x, y coordinates for each feature
-    agent_input_size = 2  # x, y coordinates for agents
+    agent_input_size = 8  # x, y coordinates for agents
     hidden_size = 64
     output_size = 2  # predicted x, y coordinates
 
@@ -18,25 +19,23 @@ def main():
     crosswalks_df = pd.read_csv("./data/crosswalks.csv")
     lanes_df = pd.read_csv("./data/lanes_polygons.csv")
     walkways_df = pd.read_csv("./data/walkways.csv")
-    ego_pose_df = pd.read_csv("./data/ego_pose_1000.csv")
+    ego_pose_df = pd.read_csv("./data/ego_pose.csv")
 
-    print("Ego pose data shape:", ego_pose_df.shape)
-    print("Ego pose columns:", ego_pose_df.columns)
-    print("First few rows of ego pose data:")
-    print(ego_pose_df.head())
+    print("\nCreating agent tensor...")
+    # Create directed graph and get agent tensor
+    directed_graph, agent_tensor_data = createDirectedGraph()
+    print("Agent tensor shape:", agent_tensor_data.shape)
 
-    # Normalize positions
+    # Normalize positions relative to the ego
     x_ref = ego_pose_df['x'].iloc[0]
     y_ref = ego_pose_df['y'].iloc[0]
 
     ego_pose_df['x_rel'] = ego_pose_df['x'] - x_ref
     ego_pose_df['y_rel'] = ego_pose_df['y'] - y_ref
 
-    print("Relative coordinates sample:")
-    print(ego_pose_df[['x_rel', 'y_rel']].head())
-
     # Encode environment
     print("\nEncoding environment...")
+    # Get a tensor from the data
     env_tensor = encode_environment(crosswalks_df, lanes_df, walkways_df)
 
     # Create model
@@ -56,20 +55,6 @@ def main():
         target = ego_pose_df.iloc[i + sequence_length][['x_rel', 'y_rel']].values
         ego_sequences.append((sequence, target))
 
-    # Print sequence information
-    print("Number of sequences created:", len(ego_sequences))
-    if len(ego_sequences) > 0:
-        print("Sample sequence shape:", ego_sequences[0][0].shape)
-        print("Sample target shape:", ego_sequences[0][1].shape)
-        print("First sequence:")
-        print(ego_sequences[0][0])
-        print("First target:")
-        print(ego_sequences[0][1])
-
-    # Create dummy agent data - now just a simple tensor
-    print("\nCreating dummy agent data...")
-    dummy_agent_data = torch.zeros((1, agent_input_size))  # batch_size=1, features=2 (x,y)
-
     # Make predictions
     print("\nMaking predictions...")
     model.eval()
@@ -79,7 +64,7 @@ def main():
         target_tensor = torch.FloatTensor(ego_sequences[0][1])
 
         print("Input sequence shape:", sequence_tensor.shape)
-        prediction = model(env_tensor, dummy_agent_data)
+        prediction = model(env_tensor, agent_tensor_data)
 
         print("\nPrediction results:")
         print("Target relative position:", target_tensor.numpy())
