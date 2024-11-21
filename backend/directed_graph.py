@@ -134,7 +134,8 @@ def createDirectedGraph():
                 np.cos(node.yaw), # Encode yaw as sin/cos
                 np.sin(node.yaw),
                 float(node.category == 'vehicle'),
-                float(node.category == 'pedestrian')
+                float(node.category == 'pedestrian'),
+                float(node.category == 'barrier')
             ]
             features_list.append(features)
 
@@ -152,7 +153,8 @@ def createDirectedGraph():
                 1.0,  # cos(0) for yaw
                 0.0,  # sin(0) for yaw
                 0.0,  # not a vehicle
-                0.0   # not a pedestrian
+                0.0,  # not a pedestrian
+                0.0   # not a barrier
             ]
             features_list.append(features)
 
