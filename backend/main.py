@@ -4,13 +4,14 @@ from directed_graph import createDirectedGraph, directedGraphNodeList, showDirec
 from model import TrajectoryPredictionModel
 from utils import encode_environment
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def main():
     # Parameters
-    sequence_length = 1
+    sequence_length = 10
     env_input_size = 2  # x, y coordinates for each feature
-    agent_input_size = 8  # x, y coordinates for agents
+    agent_input_size = 9  # x, y coordinates for agents
     hidden_size = 64
     output_size = 2  # predicted x, y coordinates
 
@@ -24,14 +25,19 @@ def main():
     print("\nCreating agent tensor...")
     # Create directed graph and get agent tensor
     directed_graph, agent_tensor_data = createDirectedGraph()
-    print("Agent tensor shape:", agent_tensor_data.shape)
+    print("\nAgent tensor shape:", agent_tensor_data.shape)
+
+    # Get current position (from first row)
+    x_current = ego_pose_df['x'].iloc[1]
+    y_current = ego_pose_df['y'].iloc[1]
+
+    # Get actual future position (next position in dataset)
+    x_actual = ego_pose_df['x'].iloc[0]
+    y_actual = ego_pose_df['y'].iloc[0]
 
     # Normalize positions relative to the ego
-    x_ref = ego_pose_df['x'].iloc[0]
-    y_ref = ego_pose_df['y'].iloc[0]
-
-    ego_pose_df['x_rel'] = ego_pose_df['x'] - x_ref
-    ego_pose_df['y_rel'] = ego_pose_df['y'] - y_ref
+    ego_pose_df['x_rel'] = ego_pose_df['x'] - x_current
+    ego_pose_df['y_rel'] = ego_pose_df['y'] - y_current
 
     # Encode environment
     print("\nEncoding environment...")
@@ -66,21 +72,43 @@ def main():
         print("Input sequence shape:", sequence_tensor.shape)
         prediction = model(env_tensor, agent_tensor_data)
 
-        print("\nPrediction results:")
-        print("Target relative position:", target_tensor.numpy())
-        print("Predicted relative position:", prediction.squeeze().numpy())
+        prediction_global = prediction.squeeze().numpy() + [x_current, y_current]
 
-        # Convert predictions back to global coordinates
-        target_global = target_tensor.numpy() + [x_ref, y_ref]
-        prediction_global = prediction.squeeze().numpy() + [x_ref, y_ref]
+        print("\nTrajectory Comparison:")
+        print(f"Current position: ({x_current:.2f}, {y_current:.2f})")
+        print(f"Actual next position: ({x_actual:.2f}, {y_actual:.2f})")
+        print(f"Predicted next position: ({prediction_global[0]:.2f}, {prediction_global[1]:.2f})")
 
-        print("\nGlobal coordinates:")
-        print("Target position:", target_global)
-        print("Predicted position:", prediction_global)
+        # Calculate prediction error
+        prediction_error = np.sqrt(
+            (prediction_global[0] - x_actual) ** 2 +
+            (prediction_global[1] - y_actual) ** 2
+        )
+        print(f"\nPrediction error (meters): {prediction_error:.2f}")
 
-        # Calculate error
-        prediction_error = np.linalg.norm(target_tensor.numpy() - prediction.squeeze().numpy())
-        print("\nPrediction error (Euclidean distance):", prediction_error)
+        # Visualize trajectories
+        # plt.figure(figsize=(10, 10))
+        #
+        # # Plot positions
+        # plt.scatter(x_current, y_current, c='blue', s=100, label='Current Position')
+        # plt.scatter(x_actual, y_actual, c='green', s=100, label='Actual Next Position')
+        # plt.scatter(prediction_global[0], prediction_global[1], c='red', s=100, label='Predicted Next Position')
+        #
+        # # Draw trajectories
+        # plt.plot([x_current, x_actual], [y_current, y_actual], 'g--', alpha=0.5, label='Actual Path')
+        # plt.plot([x_current, prediction_global[0]], [y_current, prediction_global[1]], 'r--', alpha=0.5,
+        #          label='Predicted Path')
+        #
+        # plt.title('Ego Vehicle Trajectory: Prediction vs Actual')
+        # plt.xlabel('X Position (m)')
+        # plt.ylabel('Y Position (m)')
+        # plt.legend()
+        # plt.grid(True)
+        # plt.axis('equal')
+        # plt.show()
+        #
+        # # Show agent positions relative to ego
+        # plt.figure(figsize=(10, 10))
 
 
 if __name__ == '__main__':
