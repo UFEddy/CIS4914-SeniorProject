@@ -9,24 +9,6 @@ from model import TrajectoryPredictionModel
 from utils import encode_environment
 import numpy as np
 
-
-def prepare_batch_tensors(env_tensor, agent_tensor, batch_size):
-    """Helper function to prepare tensors with correct batch dimensions and dtype"""
-    # Ensure float32 dtype
-    env_tensor = env_tensor.to(torch.float32)
-    agent_tensor = agent_tensor.to(torch.float32)
-
-    # Expand environment tensor to batch size
-    env_tensor_batch = env_tensor.expand(batch_size, -1, -1)
-
-    # Prepare agent tensor - ensure it's [batch_size, num_agents, features]
-    if len(agent_tensor.shape) == 2:
-        agent_tensor = agent_tensor.unsqueeze(0)
-    agent_tensor_batch = agent_tensor.expand(batch_size, -1, -1)
-
-    return env_tensor_batch, agent_tensor_batch
-
-
 def main():
     # Parameters
     sequence_length = 10
@@ -116,17 +98,14 @@ def main():
 
         # TRAINING LOOP
         for i in range(0, len(sequences_tensor), batch_size):
-            batch_end = min(i + batch_size, len(sequences_tensor))
-            current_batch_size = batch_end - i
-
-            batch_sequences = sequences_tensor[i:batch_end]
-            batch_targets = targets_tensor[i:batch_end]
+            batch_sequences = sequences_tensor[i:i + batch_size]
+            batch_targets = targets_tensor[i:i + batch_size]
 
             optimizer.zero_grad()
 
-            # Prepare input tensors with correct batch size and dtype
-            env_tensor_batch, agent_tensor_batch = prepare_batch_tensors(
-                env_tensor, agent_tensor, current_batch_size)
+            # Prepare input tensors
+            env_tensor_batch = env_tensor.expand(len(batch_sequences), -1, -1)
+            agent_tensor_batch = agent_tensor.unsqueeze(0).expand(len(batch_sequences), -1, -1)
 
             predictions = model(env_tensor_batch, agent_tensor_batch)
             loss = criterion(predictions, batch_targets)
