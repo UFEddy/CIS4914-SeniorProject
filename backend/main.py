@@ -40,8 +40,8 @@ def main():
     targets = []
 
     for i in range(len(ego_pose_df) - sequence_length):
-        sequence = ego_pose_df.iloc[i:i + sequence_length][['x', 'y']].values
-        target = ego_pose_df.iloc[i + sequence_length][['x', 'y']].values
+        sequence = ego_pose_df.iloc[i:i + sequence_length][['x', 'y']].values.astype(np.float32)
+        target = ego_pose_df.iloc[i + sequence_length][['x', 'y']].values.astype(np.float32)
         sequences.append(sequence)
         targets.append(target)
 
