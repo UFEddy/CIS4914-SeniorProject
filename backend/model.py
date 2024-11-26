@@ -25,9 +25,13 @@ class TrajectoryPredictionModel(nn.Module):
             hidden_dim=hidden_size
         )
 
-        # Final layer: combines everything to predict where we'll go
-        #   - Takes all processed info and predicts our next position
-        self.fc = nn.Linear(hidden_size * 3, output_size)
+        # Output layers with added complexity
+        self.combined_layer = nn.Sequential(
+            nn.Linear(hidden_size * 3, hidden_size),
+            nn.BatchNorm1d(hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, output_size)
+        )
 
     def forward(self, env_tensor, agent_tensor):
         # Turn environment tensor into useful information
@@ -38,16 +42,22 @@ class TrajectoryPredictionModel(nn.Module):
         agent_encoding = self.agent_encoder(agent_tensor)
         # Put all agent information into one "chunk"
         #   - Instead of remembering 10 different cars, make one summary
-        agent_encoding = torch.mean(agent_encoding, dim=0, keepdim=True)
+        agent_encoding = torch.mean(agent_encoding, dim=1)
 
-        # Figure out how nearby cars/people affect the decision
+        # Influence encoding - [batch_size, hidden_size]
         influence_encoding = self.influence_encoder(agent_tensor)
-        # Add batch dimension so shapes match up for combining
-        influence_encoding = influence_encoding.unsqueeze(0)
 
-        # Combine all the pieces
-        combined = torch.cat((env_encoding, agent_encoding, influence_encoding), dim=-1)
+        # Ensure all tensors have shape [batch_size, hidden_size]
+        if len(env_encoding.shape) != 2:
+            env_encoding = env_encoding.squeeze(1)
+        if len(agent_encoding.shape) != 2:
+            agent_encoding = agent_encoding.squeeze(1)
+        if len(influence_encoding.shape) != 2:
+            influence_encoding = influence_encoding.squeeze(1)
 
-        # Use everything we know to predict where to drive
-        output = self.fc(combined)
+        # Combine all encodings
+        combined = torch.cat((env_encoding, agent_encoding, influence_encoding), dim=1)
+
+        # Generate prediction
+        output = self.combined_layer(combined)
         return output

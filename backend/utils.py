@@ -42,7 +42,7 @@ def encode_environment(crosswalks_df, lanes_df, walkways_df):
     #     environment_features = environment_features[:5000]
 
     # Add a batch dimension because our model expects it
-    environment_tensor = environment_features.unsqueeze(0)
+    environment_tensor = environment_features.unsqueeze(0).to(torch.float32)
 
     print("Final environment tensor shape:", environment_tensor.shape)
     return environment_tensor

@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 
+# https://pytorch.org/docs/stable/generated/torch.norm.html
+# https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html
+# https://pytorch.org/docs/stable/generated/torch.nn.ReLU.html
 
 class EnvironmentEncoder(nn.Module):
     def __init__(self, input_size, hidden_size):
@@ -12,6 +15,8 @@ class EnvironmentEncoder(nn.Module):
         self.hidden_size = hidden_size
 
     def forward(self, env_tensor):
+        # Ensure data type for tensor
+        env_tensor = env_tensor.to(torch.float32)
         # Get batch size from input tensor (how many batches to produce)
         batch_size = env_tensor.size(0)
         # Create initial hidden state with zeros
@@ -34,11 +39,22 @@ class AgentInteractionEncoder(nn.Module):
         super(AgentInteractionEncoder, self).__init__()
         # Linear layer: transform agent features into higher dimension
         #   maps from in_features to out_features for richer representation
-        self.gnn = nn.Linear(in_features, out_features)
+        self.gnn = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.ReLU(),
+            nn.Linear(out_features, out_features)
+        )
 
     def forward(self, agent_data):
-        # Put features through the linear layer
-        node_embeddings = self.gnn(agent_data)
+        # Ensure input is 3D: [batch_size, num_agents, features]
+        agent_data = agent_data.to(torch.float32)
+        if len(agent_data.shape) == 2:
+            agent_data = agent_data.unsqueeze(0)
+
+        batch_size, num_agents, _ = agent_data.shape
+
+        # Process each agent's features
+        node_embeddings = self.gnn(agent_data)  # [batch_size, num_agents, out_features]
         return node_embeddings
 
       
@@ -56,54 +72,62 @@ class InfluenceEncoder(nn.Module):
         self.relu = nn.ReLU()
         # Linear layer: final transformation of aggregated features
         self.fc_aggregate = nn.Linear(hidden_dim, hidden_dim)
-    
+
     def forward(self, agent_tensor):
-        # 1. Input Processing
-        #   -   Get ego and other agents from the tensor
-        ego_features = agent_tensor[0]  # Shape is 8 (features)
-        agent_features = agent_tensor[1:]   # Shape is 9
-        #   -   Get specific positions
-        agent_positions = agent_features[:, :2]  # Shape: [num_agents, 2]
-        ego_position = ego_features[:2]  # Shape: [2]
+        # Handle batch dimension
+        # Ensure float32
+        agent_tensor = agent_tensor.to(torch.float32)
+        # If agent_tensor is [batch_size, num_agents, features]
+        batch_size = agent_tensor.size(0)
 
-        # 2. Calculate influence weights for each agent
-        #   -   Distance between agent to ego
-        distances = torch.norm(agent_positions - ego_position, dim=1)
-        #   -   Calculate base weights - closer agents have more influence
-        weights = 1.0 / (distances + 1.0)  # Add 1 to avoid division by zero
+        # Process each batch separately
+        batch_influences = []
 
-        #   -   Extract agent types from features
-        is_vehicle = agent_features[:, 6]
-        is_pedestrian = agent_features[:, 7]
-        is_barrier = agent_features[:, 8]
+        for b in range(batch_size):
+            # Get current batch data
+            current_batch = agent_tensor[b]  # [num_agents, features]
 
-        #   -   Modify weights based on agent type
-        #   --      Vehicles have 5x more influence
-        weights = torch.where(is_vehicle == 1, weights * 5.0, weights)
-        #   --      Pedestrians have 1x more influence
-        weights = torch.where(is_pedestrian == 1, weights * 1.0, weights)
-        #   --      Barriers have 1x more influence
-        weights = torch.where(is_barrier == 1, weights * 1.0, weights)
+            # Extract ego and agent features
+            ego_features = current_batch[0]  # [features]
+            agent_features = current_batch[1:]  # [num_agents-1, features]
 
-        #    -   Normalize weights so they sum to 1
-        weights = weights / weights.sum()
-        #   -   Add dim for matrix operations
-        influence_weights = weights.unsqueeze(1)
+            if len(agent_features) == 0:
+                # Handle case with no agents
+                return torch.zeros(batch_size, self.fc.out_features).to(agent_tensor.device)
 
-        # 3. Feature Transformation
-        #   -   Transform all agent features to higher dim
-        agent_embeddings = self.fc(agent_features)   # Shape is [num_agents, hidden_dim]
-        #   -   Get rid of negatives
-        agent_embeddings = self.relu(agent_embeddings)
+            # Get positions
+            agent_positions = agent_features[:, :2]  # First 2 features are x,y positions
+            ego_position = ego_features[:2]
 
-        # 4. More Weights
-        #   -   Weight embeddings by their influence
-        weighted_embeddings = agent_embeddings * influence_weights
-        #   -   Sum all weighted agent influences into vector
-        aggregated_influence = weighted_embeddings.sum(dim=0)   # Shape = [hidden_dim]
+            # Calculate distances
+            distances = torch.norm(agent_positions - ego_position.unsqueeze(0), dim=1)
+            weights = 1.0 / (distances + 1.0)
 
-        # 5. Final Processing
-        #   -   Transform and return final influence vector
-        influence_vector = self.fc_aggregate(self.relu(aggregated_influence))
+            # Agent type weights
+            is_vehicle = agent_features[:, 6]
+            is_pedestrian = agent_features[:, 7]
+            is_barrier = agent_features[:, 8]
 
-        return influence_vector
+            # Modify weights
+            weights = torch.where(is_vehicle == 1, weights * 5.0, weights)
+            weights = torch.where(is_pedestrian == 1, weights * 1.0, weights)
+            weights = torch.where(is_barrier == 1, weights * 1.0, weights)
+
+            # Normalize weights
+            weights = weights / (weights.sum() + 1e-10)  # Added small epsilon for numerical stability
+            influence_weights = weights.unsqueeze(1)
+
+            # Transform features
+            agent_embeddings = self.fc(agent_features)  # [num_agents-1, hidden_dim]
+            agent_embeddings = self.relu(agent_embeddings)
+
+            # Apply weights
+            weighted_embeddings = agent_embeddings * influence_weights
+            aggregated_influence = weighted_embeddings.sum(dim=0)  # [hidden_dim]
+
+            # Final transformation
+            influence_vector = self.fc_aggregate(self.relu(aggregated_influence))
+            batch_influences.append(influence_vector)
+
+        # Stack all batch influences
+        return torch.stack(batch_influences)
