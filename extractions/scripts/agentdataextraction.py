@@ -26,7 +26,7 @@ nuplandb_wrapper = NuPlanDBWrapper(
 OUTPUT_DIR = "agent_data"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def extract_agent_data(log_db, duration_seconds=10):
+def extract_agent_data(log_db, duration_seconds=120):
     """Extracts track and lidar_box data to CSV."""
     output_path = os.path.join(OUTPUT_DIR, "agent_data.csv")
     
@@ -41,16 +41,18 @@ def extract_agent_data(log_db, duration_seconds=10):
     lidar_pc_table = log_db.lidar_pc
 
     # Find the earliest timestamp from all lidar_pcs referenced by lidar_boxes
-    earliest_timestamp = float('inf')
-    for box in lidar_boxes:
-        pc = lidar_pc_table[box.lidar_pc_token]
-        if pc.timestamp < earliest_timestamp:
-            earliest_timestamp = pc.timestamp
+    cutoff_timestamp = None
+    if duration_seconds is not None:
+        earliest_timestamp = float('inf')
+        for box in lidar_boxes:
+            pc = lidar_pc_table[box.lidar_pc_token]
+            if pc.timestamp < earliest_timestamp:
+                earliest_timestamp = pc.timestamp
 
-    # Calculate the cutoff timestamp (first 10 seconds)
-    # The timestamp is in microseconds, so convert duration_seconds to microseconds
-    cutoff_timestamp = earliest_timestamp + duration_seconds * 1e6
-    
+        # Calculate the cutoff timestamp (first 10 seconds)
+        # The timestamp is in microseconds, so convert duration_seconds to microseconds
+        cutoff_timestamp = earliest_timestamp + duration_seconds * 1e6
+
     with open(output_path, mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=[
             "timestamp", "track_token", "category", "x", "y", "z", "vx", "vy", "vz", "yaw", 
@@ -65,7 +67,7 @@ def extract_agent_data(log_db, duration_seconds=10):
             current_timestamp = pc.timestamp
 
             # Check if the current box's timestamp is within the first `duration_seconds` seconds
-            if current_timestamp > cutoff_timestamp:
+            if cutoff_timestamp is not None and current_timestamp > cutoff_timestamp:
                 continue  # Skip any box beyond the first `duration_seconds` seconds
 
             # Retrieve the track information
@@ -89,11 +91,13 @@ def extract_agent_data(log_db, duration_seconds=10):
                 "height": box.height,
                 "confidence": box.confidence
             })
-
-    print(f"Agent data for the first {duration_seconds} seconds saved to {output_path}")
+    if duration_seconds is not None:
+        print(f"Agent data for the first {duration_seconds} seconds saved to {output_path}")
+    else:
+        print(f"Agent data for the entire log saved to {output_path}")
 
 # Load log database
 log_db_name = LOGNAME
 log_db = nuplandb_wrapper.get_log_db(log_db_name)
 
-extract_agent_data(log_db, duration_seconds=10)
+extract_agent_data(log_db, duration_seconds=120)
