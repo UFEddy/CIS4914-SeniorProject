@@ -5,33 +5,98 @@ import torch.nn as nn
 # https://pytorch.org/docs/stable/generated/torch.nn.LSTM.html
 # https://pytorch.org/docs/stable/generated/torch.nn.ReLU.html
 
+
 class EnvironmentEncoder(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, hidden_size):
         super(EnvironmentEncoder, self).__init__()
-        # LSTM layer: transforms input sequence into hidden states
-        #   - batch_first=True says the input shape is in (batch, seq, feature) form
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
-        # Hidden size is what should be remembered
-        self.hidden_size = hidden_size
 
-    def forward(self, env_tensor):
-        # Ensure data type for tensor
-        env_tensor = env_tensor.to(torch.float32)
-        # Get batch size from input tensor (how many batches to produce)
-        batch_size = env_tensor.size(0)
-        # Create initial hidden state with zeros
-        #   - shape: [1, batch_size, hidden_size]
-        h0 = torch.zeros(1, batch_size, self.hidden_size).to(env_tensor.device)
-        # Create initial cell state with zeros, same shape
-        #   - cells contains information about the environment
-        c0 = torch.zeros(1, batch_size, self.hidden_size).to(env_tensor.device)
+        # Separate encoders for different environment features
+        self.lane_encoder = nn.Sequential(
+            nn.Linear(7, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
 
-        # Run LSTM: process the environment features through a lstm layer
-        #   - output contains all hidden states, hidden contains final states
-        output, (hidden, _) = self.lstm(env_tensor, (h0, c0))
+        self.crosswalk_encoder = nn.Sequential(
+            nn.Linear(5, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
 
-        # Return last hidden state
-        return hidden[-1]
+        self.walkway_encoder = nn.Sequential(
+            nn.Linear(4, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
+
+        # Attention mechanism for each feature type
+        self.lane_attention = nn.Linear(hidden_size, 1)
+        self.crosswalk_attention = nn.Linear(hidden_size, 1)
+        self.walkway_attention = nn.Linear(hidden_size, 1)
+
+        # Final fusion layer
+        self.fusion_layer = nn.Sequential(
+            nn.Linear(hidden_size * 3, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size)
+        )
+
+        self.spatial_radius = 50.0  # meters
+
+    def forward(self, environment_features, ego_position):
+        """
+        Args:
+            environment_features: Tuple of (lane_features, crosswalk_features, walkway_features)
+                Each feature is a tensor containing the processed geometric data
+            ego_position: tensor of shape (batch_size, 2) containing (x, y) coordinates
+        """
+        lane_features, crosswalk_features, walkway_features = environment_features
+        batch_size = ego_position.shape[0]
+        device = ego_position.device
+
+        # Handle empty features case
+        if len(lane_features) == 0:
+            lane_features = torch.zeros((batch_size, 1, 7)).to(device)
+        if len(crosswalk_features) == 0:
+            crosswalk_features = torch.zeros((batch_size, 1, 5)).to(device)
+        if len(walkway_features) == 0:
+            walkway_features = torch.zeros((batch_size, 1, 4)).to(device)
+
+        # Ensure all features are on the correct device
+        lane_features = lane_features.to(device)
+        crosswalk_features = crosswalk_features.to(device)
+        walkway_features = walkway_features.to(device)
+
+        # Add batch dimension if not present
+        if len(lane_features.shape) == 2:
+            lane_features = lane_features.unsqueeze(0).expand(batch_size, -1, -1)
+        if len(crosswalk_features.shape) == 2:
+            crosswalk_features = crosswalk_features.unsqueeze(0).expand(batch_size, -1, -1)
+        if len(walkway_features.shape) == 2:
+            walkway_features = walkway_features.unsqueeze(0).expand(batch_size, -1, -1)
+
+        # Process lanes
+        lane_encoded = self.lane_encoder(lane_features)
+        lane_attention = torch.softmax(self.lane_attention(lane_encoded), dim=1)
+        lane_context = (lane_attention * lane_encoded).sum(dim=1)
+
+        # Process crosswalks
+        crosswalk_encoded = self.crosswalk_encoder(crosswalk_features)
+        crosswalk_attention = torch.softmax(self.crosswalk_attention(crosswalk_encoded), dim=1)
+        crosswalk_context = (crosswalk_attention * crosswalk_encoded).sum(dim=1)
+
+        # Process walkways
+        walkway_encoded = self.walkway_encoder(walkway_features)
+        walkway_attention = torch.softmax(self.walkway_attention(walkway_encoded), dim=1)
+        walkway_context = (walkway_attention * walkway_encoded).sum(dim=1)
+
+        # Combine contexts
+        combined_context = torch.cat([lane_context, crosswalk_context, walkway_context], dim=1)
+
+        # Final fusion
+        environment_encoding = self.fusion_layer(combined_context)
+
+        return environment_encoding
 
 
 class AgentInteractionEncoder(nn.Module):

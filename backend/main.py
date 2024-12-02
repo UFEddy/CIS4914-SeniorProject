@@ -6,8 +6,11 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 from directed_graph import createDirectedGraph
 from model import TrajectoryPredictionModel
-from utils import encode_environment
 import numpy as np
+import datetime
+
+from utils import prepare_environment_data, process_environment_data
+
 
 def main():
     # Parameters
@@ -17,8 +20,8 @@ def main():
     hidden_size = 64
     output_size = 2
     batch_size = 32
-    num_epochs = 2  # Update to for additional trainings, 2 is min to see if it's working
-    learning_rate = 0.001
+    num_epochs = 25  # Update to for additional trainings, 2 is min to see if it's working
+    learning_rate = 0.1
 
     # Load data
     print("Loading data...")
@@ -70,11 +73,13 @@ def main():
 
     # Encode environment
     print("\nEncoding environment...")
-    env_tensor = encode_environment(crosswalks_df, lanes_df, walkways_df)
+    # Prepare the environment data
+    lanes_df, crosswalks_df, walkways_df = prepare_environment_data(
+        crosswalks_df, lanes_df, walkways_df
+    )
 
     # Initialize model and training components
     model = TrajectoryPredictionModel(
-        env_input_size=env_input_size,
         agent_input_size=agent_input_size,
         hidden_size=hidden_size,
         output_size=output_size
@@ -101,13 +106,16 @@ def main():
             batch_sequences = sequences_tensor[i:i + batch_size]
             batch_targets = targets_tensor[i:i + batch_size]
 
+            current_positions = batch_sequences[:, -1, :]  # Last position in sequence
             optimizer.zero_grad()
 
             # Prepare input tensors
-            env_tensor_batch = env_tensor.expand(len(batch_sequences), -1, -1)
+            environment_features = process_environment_data(
+                crosswalks_df, lanes_df, walkways_df, current_positions
+            )
             agent_tensor_batch = agent_tensor.unsqueeze(0).expand(len(batch_sequences), -1, -1)
 
-            predictions = model(env_tensor_batch, agent_tensor_batch)
+            predictions = model(environment_features, current_positions, agent_tensor_batch)
             loss = criterion(predictions, batch_targets)
 
             loss.backward()
@@ -120,7 +128,8 @@ def main():
         losses.append(epoch_loss)
         scheduler.step(epoch_loss)
 
-        print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.6f}")
+        now = datetime.datetime.now()
+        print(f"{now.time().strftime('%H:%M:%S')}: Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss:.6f}")
 
         # Early stopping check
         if epoch > 10 and losses[-1] > losses[-2] > losses[-3]:
@@ -140,12 +149,18 @@ def main():
     model.eval()
     with torch.no_grad():
         test_sequence = sequences_tensor[-1].unsqueeze(0)
-        test_env_tensor = env_tensor.expand(1, -1, -1)
         test_agent_tensor = agent_tensor.unsqueeze(0)
+        test_position = test_sequence[:, -1, :]  # Last position of sequence
 
-        test_prediction = model(test_env_tensor, test_agent_tensor)
+        environment_features = process_environment_data(
+            crosswalks_df,
+            lanes_df,
+            walkways_df,
+            test_position
+        )
+        test_prediction = model(environment_features, test_position, test_agent_tensor)
 
-        # Denormalize predictions using numpy arrays
+        # Denormalize predictions
         prediction_denorm = (test_prediction.squeeze().numpy() * pos_std) + pos_mean
         actual_denorm = (targets_tensor[-1].numpy() * pos_std) + pos_mean
 

@@ -4,12 +4,12 @@ from encoders import EnvironmentEncoder, AgentInteractionEncoder, InfluenceEncod
 
 
 class TrajectoryPredictionModel(nn.Module):
-    def __init__(self, env_input_size, agent_input_size, hidden_size, output_size):
+    def __init__(self, agent_input_size, hidden_size, output_size):
         super(TrajectoryPredictionModel, self).__init__()
 
         # Environment encoder: processes road/scene information
         #   - Takes in environment data and learns what's important about it
-        self.env_encoder = EnvironmentEncoder(env_input_size, hidden_size)
+        self.env_encoder = EnvironmentEncoder(hidden_size)
 
         # Agent encoder: processes all the cars/people around us
         #   - Takes raw agent features and makes them easier to understand
@@ -27,15 +27,20 @@ class TrajectoryPredictionModel(nn.Module):
 
         # Output layers with added complexity
         self.combined_layer = nn.Sequential(
-            nn.Linear(hidden_size * 3, hidden_size),
+            nn.Linear(hidden_size * 3, hidden_size * 2),
+            nn.BatchNorm1d(hidden_size * 2),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size * 2, hidden_size),
             nn.BatchNorm1d(hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, output_size)
+            nn.Linear(hidden_size, output_size),
+            nn.Tanh()
         )
 
-    def forward(self, env_tensor, agent_tensor):
+    def forward(self, environment_features, ego_position, agent_tensor):
         # Turn environment tensor into useful information
-        env_encoding = self.env_encoder(env_tensor)
+        env_encoding = self.env_encoder(environment_features, ego_position)
 
         # Turn agent tensor into useful information
         #   - Like looking at each car/person and remembering key things
@@ -48,8 +53,8 @@ class TrajectoryPredictionModel(nn.Module):
         influence_encoding = self.influence_encoder(agent_tensor)
 
         # Ensure all tensors have shape [batch_size, hidden_size]
-        if len(env_encoding.shape) != 2:
-            env_encoding = env_encoding.squeeze(1)
+        # if len(env_encoding.shape) != 2:
+        #     env_encoding = env_encoding.squeeze(1)
         if len(agent_encoding.shape) != 2:
             agent_encoding = agent_encoding.squeeze(1)
         if len(influence_encoding.shape) != 2:
@@ -60,4 +65,5 @@ class TrajectoryPredictionModel(nn.Module):
 
         # Generate prediction
         output = self.combined_layer(combined)
+        output = output * 10.0  # Scale to ±10 meters
         return output
